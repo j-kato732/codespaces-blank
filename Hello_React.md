@@ -123,3 +123,51 @@ yarn install
 
 ## package.json
 `package.json`には、プロジェクト内で必要とするパッケージの一覧が記述されている。  
+
+
+# JavaScript
+JavaScriptの特徴
+- 第一級関数とクロージャをサポートしている
+- 
+
+
+## 第一級関数
+関数を値として扱うことができるようになる。  
+
+そのため以下のように、関数の定義を変数に格納して変数を使用して関数を呼び出す事ができるようになる。
+```js
+const foo = () => {
+  console.log("foobar");
+}
+foo(); // 変数を使用して呼び出し
+// foobar
+```
+
+## クロージャ
+関数内に関数とデータを記述し、データと関数を紐付けることで保守性の高いプログラムを記述する方法。
+
+```js
+// 関数の外に設定していた変数はなくなりました
+
+function counter() {
+  // 関数内に変数を宣言し用意する
+  let count = 0;
+
+  // 関数内にcount変数を利用する関数を定義する
+  function returnCounter() {
+    count = count + 1;
+    console.log(count);
+  }
+
+  // リターンとして、returnCounter関数の定義を返す。あくまで『定義』。
+  return returnCounter;
+}
+
+// counter()を実行して、リターンとしてreturnCounter関数の『定義』を受け取ります。
+const myCounter = counter();
+
+// myCounterに()をつけて『returnCounter()』として実行しています。
+myCounter();　// 1が出力される
+myCounter();　// 2が出力される
+myCounter();　// 3が出力される
+```

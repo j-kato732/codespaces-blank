@@ -498,3 +498,143 @@ const sum = (i, ...[j, k, l]) => i + j + k + l;
 console.log(sum(1,2,3,4));      // 10
 console.log(sum(1,1,1,1,1,1));  // 4
 ```
+
+
+# クラス
+JavaScriptにおけるクラス定義は以下のように記述する。
+
+```js
+class Bird {
+  // プライベートフィールド
+  #className = '鳥類';
+
+  // コンストラクタ
+  constructor(name) {
+    this.name = name
+  }
+
+  // メソッド
+  cry = (sound) => {
+    console.log(`${this.name}が「$(sound)」と鳴きました`);
+  };
+
+  introduce = () => {
+    console.log(`私は$(this.#className)の$(this.name)です。`);
+  };
+
+  static explain = () => {
+    console.log('これは鳥のクラスです');
+  };
+}
+
+class FlyableBird extends Bird {
+  // コンストラクタ
+  constructor(name) {
+    super(name);
+  }
+
+  // メソッド
+  fly = () => {
+    console.log(`$(this.name)が飛びました`);
+  };
+}
+
+Bird.explain();     // これは鳥のクラスです
+
+const penguin = new Bird('ペンギン');
+penguin.introduce();  // 私は鳥類のペンギンです
+
+const hawk = new FlyableBird('タカ');
+hawk.cry('ピィィー');     //タカがピィィーと鳴きました
+hawk.fly();           // タカが飛びました
+```
+
+サンプルの通り、クラスの使い方は他のプログラミング言語と似ている。しかしJavaScriptには厳密な意味でのクラスは存在せず、これらはあたかもクラスを作っているかのように見えるシンタックスシュガーである。  
+
+実際にBirdクラスを`typeof`で調べてみると以下の通り。
+```js
+> .load bird-class.js
+> typeof Bird
+'function'
+```
+
+この`function`はコンストラクタ関数を指すもの。  
+コンストラクタ関数は、プロトタイプオブジェクトを継承してオブジェクトインスタンスを生成するための独立した関数のこと。
+
+何をいっているかわからない場合は、オブジェクト指向言語であっても、Javaのような「クラスベース」ではなく、「プロトタイプベース」であることを理解する必要がある。
+
+## プロトタイプベース
+JavaScript はオブジェクト指向の言語であるが、他のオブジェクト指向の言語、例えば Ruby などのクラスベースのオブジェクト指向の言語とは違いプロトタイプベースとなっている。  
+クラスベースのオブジェクト指向は抽象クラスから具象オブジェクトを生成するのに対して、プロトタイプベースでは抽象クラスが存在せず実態のあるオブジェクトがオブジェクトを直接継承する。その、継承元になったオブジェクトをプロトタイプと表現する。
+
+プロトタイプは他のプログラミング言語における継承を司る仕組みで、以下のような動きをする。
+- すべてのオブジェクトは`prototype`というプロパティを持ち、値としてなんらかのオブジェクト（もしくはnull）を参照する
+- この`prototype`プロパティで参照する、オブジェクトのことをプロトタイプという
+- あるオブジェクトが自身が保持しないプロパティを命令された場合、プロトタイプを参照する
+- もしプロトタイプが命令されたプロパティが持つ場合、その値を返却する
+- プロトタイプが命令されたプロパティを持たず、プロトタイプがプロトタイプを持つ場合は探しに行く
+- 参照しているプロトタイプがnullになるまで行う
+
+
+オブジェクト型はプロトタイプとして、何らかのオブジェクトを継承する。  
+
+オブジェクトがどんなプロトタイプを持つかは`Object.getPrototypeOf(オブジェクト)`で調べる。  
+`オブジェクト.__proto__`の調べ方はは非推奨になっているため注意。
+```js
+console.log(Object.getPrototypeOf("hello"));    // ""
+console.log(Object.getPrototypeOf([1,2,3]));    // []
+console.log(Object.getPrototypeOf(123));        // 0
+console.log(Object.getPrototypeOf({foo: 'bar'}));   // {}
+```
+
+```js
+> Object.getPrototypeOf([1,2,3])
+Object(0) []
+> Object.getPrototypeOf('JavaScript')
+{}
+> 'JavaScript'.__proto__
+{}
+> (65536).__proto__
+{}
+> Object.getPrototypeOf(65536)
+```
+
+```js
+> const getProto = Object.getPrototypeOf
+```
+
+Arrayの継承
+```js
+> getProto(Array)
+{}
+> getProto(getProto(Array))
+[Object: null prototype] {}
+> getProto(getProto(getProto(Array)))
+null
+```
+
+Functionの継承
+```js
+> getProto(Function)
+{}
+> getProto(getProto(Function))
+[Object: null prototype] {}
+> getProto(getProto(getProto(Function)))
+null
+```
+
+Objectの継承
+```js
+> getProto(Object)
+{}
+> getProto(getProto(Object))
+[Object: null prototype] {}
+> getProto(getProto(getProto(Object)))
+null
+```
+
+Object.prototypeには、継承元になるための実装が入っている。  
+Object.getPrototypeOf(オブジェクト型)とすることで、指定したオブジェクト型のプロトタイプが確認できる。
+
+## コンストラクタ関数
+JavaScriptでオブジェクト型のインスタンスを作成する場合、

@@ -671,3 +671,232 @@ const flyableBirdInstance = new FlyableBird('スズメ');
 flyableBirdInstance.cry();
 flyableBirdInstance.fly();
 ```
+
+# オブジェクトの表現
+ES2015から便利な記法が多くある。でも初見は呪文にしか見えないので注意。  
+
+ルールは以下の通り
+- 文字列としてキーを指定する場合はクォート省略可能
+- キーの文字列に変数や式の結果を梅とhコッ無場合は`[]`で囲む
+- プロパティのショートハンドが使える
+  - オブジェクトに値を指定すると、変数名がキー、値がプロパティ値になること 
+- 配列は分割代入が可能
+
+```js
+const foo ='dummy';
+const bar = 'key';
+const baz = 1024;
+
+const obj1 = {
+    foo: 4,
+    'foo': 8,
+    '<fuu>': 16,
+    [bar]: 128,
+    {`_${bar}2`}; 256,
+    baz: baz / 2, 
+};
+
+console.log(obj1)   // { foo: 8, <fuu>: 16, key: 128, _key2: 256, baz: 512 }
+
+const obj2 = { baz };
+console.log(obj2)   // { baz: 1024 }
+```
+
+## 分割代入
+配列であれば位置、オブジェクトであればキーに対応した変数を用意することで、位置・キーに対応した値を変数に代入してくれる仕組み。  
+対応した変数が用意されていない場合は値は捨てられる。  
+
+
+```js
+const [a, b] = ['foo', 'bar'];
+console.log(a, b);       // foo bar
+
+const [, n] = [1, 4];
+console.log(n);      // 4
+
+const [, , i, , j, , , k] = [1, 2, 3, 4, 5, 6, 7,];
+console.log(i, j, k);   // 3 5 undefined
+
+const profile = { name: 'Kanae', age: 24, gender: 'f' };
+const {name, age} = profile;
+console.log(name, age);     // Kanae 24
+```
+
+また{キー: 変数名}と記述することで変数名を指定して分割代入も可能。
+```js
+const profile = { name: 'Kanae', age: 24, gender: 'f' };
+const {name: namae, age} = profile;
+console.log(namae, age);     // Kanae 24
+```
+
+他のプログラミング言語ではあまり使われないが、JavaScriptではスタイルガイドで矯正されるくらい利用が推奨される。   
+例えばこんなものはだめ`const name = profile.name`。分割代入を利用する。
+
+もしオブジェクトの分割代入の際にキーが存在しない場合のデフォルト値を指定することも可能。
+以下の例では`data`を`users`変数として受け取るように記述し、もし`reponse`オブジェクトに`data`が存在しない場合は`users`はから配列となる。
+```js
+const response = {
+    data: [
+        {
+            id: 1,
+            name: 'Patty Rabbit',
+            email: 'pretty@maple.town',
+        },
+        {
+            id: 2,
+            name: 'Rolley Cocker',
+            email: 'rolley@palm.town',
+        },
+        {
+            id: 3,
+            name: 'Bobby Bear',
+            email: 'bobby@maple.town',
+        },
+    ]
+};
+
+const { data: users = [] } = response;
+console.log(users);
+
+// [{
+//   email: "pretty@maple.town",
+//   id: 1,
+//   name: "Patty Rabbit"
+// }, {
+//   email: "rolley@palm.town",
+//   id: 2,
+//   name: "Rolley Cocker"
+// }, {
+//   email: "bobby@maple.town",
+//   id: 3,
+//   name: "Bobby Bear"
+// }]
+```
+
+## スプレッド構文
+レスとパラメータ同様、定義されたコレクションは、`...コレクション`とすることで中身を展開することができる。これをスプレッド構文という。  
+配列のスプレッド構文はES2015から、オブジェクトはES2018から使えるようになった。
+
+```js
+const arr1 = ['a', 'b', 'c'];
+const arr2 = [...arr1, 'd', 'e'];
+const arr3 = ['Y', 'Z', ...arr2];
+
+console.log(arr2);      // ["a", "b", "c", "d", "e"]
+console.log(arr3);      // ["Y", "Z", "a", "b", "c", "d", "e"]
+
+const obj1 = { a: 1, b: 2, c: 3, d: 4 };
+const obj2 = {...obj1, d: 99, e: 5 };
+console.log(obj2);      // { a: 1, b: 2, c: 3, d: 99, e: 5 }
+```
+
+分割代入とスプレッド構文を組み合わせることでこのような抽出も可能。
+
+```js
+const user = {
+    id: 1,
+    name: 'Pretty Rabbit',
+    email: 'patty@maple.town',
+    age: 8,
+}
+
+const { id, ...userWithoutId } = user;
+console.log(id, userWithoutId);
+
+// 1, {
+//   age: 8,
+//   email: "patty@maple.town",
+//   name: "Pretty Rabbit"
+// }
+```
+
+# オブジェクトのマージとコピー
+「オブジェクト型の値は別の変数に代入しただけだと、参照渡しになって実態は共有されたまま」というのは他のプログラミング言語と同様。  
+
+そのためオブジェクトのコピーには別の方法が必要。
+よくあるのは以下の通り。
+`Object.assign()`は第一引数のオブジェクトに、第2引数以降のオブジェクトの各プロパティを追加・上書きするメソッド。で最後の結果にある通り、`original`オブジェクトの中身が`assigned`と同様にものになってしまっている。  
+
+```js
+const original = { a: 1, b: 2, c: 3};
+
+const copy = Object.assign({}, original);
+console.log(copy);
+console.log(copy === original);     // false → 値はおなじでもアドレスを共有しない別オブジェクト
+
+const assigned = Object.assign(original, { c: 10, d: 50 }, { d: 100 });
+console.log(assigned);          // {a: 1,b: 2,c: 10,d: 100}
+console.log(original);          // {a: 1,b: 2,c: 10,d: 100}
+```
+
+そのため`Object.assign()`はあまり使用されない。
+
+最近ではスプレッド構文を利用する。  
+これによってコピー先のオブジェクトのプロパティを追加してもオリジナルに影響を及ぼさない。
+
+```js
+const original = { a: 1, b: 2, c: 3 };
+
+const copy = { ...original };
+console.log(copy)
+console.log(original === copy);     // false
+
+const assigned = { ...original, ...{ c: 10, d: 50 }, e: 100 }
+console.log(original);      // { a: 1,b: 2,c: 3 }
+console.log(assigned);      // { a: 1,b: 2,c: 10,d: 50,e: 100 }
+```
+
+しかし注意が必要なのはこれらのコピーはシャローコピーであり、プロパティの値が配列やオブジェクトだった場合は、それらの値までコピーしてくれるものではない。
+
+以下のプログラムの場合は、`patty`の`address`配下のオブジェクトはシャローコピーなので、`rolley`の`address`は`patty`の`address`のアドレスを参照しているため、`rolley`配下のオブジェクトの変更でも、`patty`の`address`も変更されてしまう。
+
+```js
+const patty = {
+    name: 'Patty Rabbit',
+    email: 'patty@maple.town',
+    address: { town: 'Maple Town' }
+};
+
+const rolley = { ...patty, name: 'Rolley Cocker' };
+rolley.email = 'rolley@palm.town';
+rolley.address.town = 'Palm Town';
+
+console.log(patty);
+
+// {
+//   address: {
+//     town: "Palm Town"
+//   },
+//   email: "patty@maple.town",
+//   name: "Patty Rabbit"
+// }
+```
+
+オブジェクトをまるごとコピー（ディープコピー）したいなら、すべての階層を再帰的に値をコピーする必要がある。  
+オブジェクトのディープコピーは、一度JSONにパースして変更することになる。  
+
+```js
+const patty = {
+    name: 'Patty Rabbit',
+    email: 'patty@maple.town',
+    address: { town: 'Maple Town' }
+};
+
+const rolley = JSON.parse(JSON.stringify(patty));
+rolley.name = 'Rolley Cocker';
+rolley.email = 'rolley@palm.town';
+rolley.address.town = 'Palm Town';
+
+console.log(patty);
+
+// {
+//   address: {
+//     town: "Maple Town"
+//   },
+//   email: "patty@maple.town",
+//   name: "Patty Rabbit"
+// }
+```
+
+これは強引なやり方なので弊害も存在し、プロパティに`Date`オブジェクトや関数、`undefined`などが存在する場合はうまく動かない。  
+なのでその場合は、`Lodash`というユーティリティライブラリの`cloneDeep()`を利用する。

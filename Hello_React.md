@@ -774,7 +774,7 @@ console.log(users);
 ```
 
 ## スプレッド構文
-レスとパラメータ同様、定義されたコレクションは、`...コレクション`とすることで中身を展開することができる。これをスプレッド構文という。  
+レストパラメータ同様、定義されたコレクションは、`...コレクション`とすることで中身を展開することができる。これをスプレッド構文という。  
 配列のスプレッド構文はES2015から、オブジェクトはES2018から使えるようになった。
 
 ```js
@@ -900,3 +900,121 @@ console.log(patty);
 
 これは強引なやり方なので弊害も存在し、プロパティに`Date`オブジェクトや関数、`undefined`などが存在する場合はうまく動かない。  
 なのでその場合は、`Lodash`というユーティリティライブラリの`cloneDeep()`を利用する。
+
+# 式と演算子での省略構文
+最近のJavaScriptは関数型プログラミングのパラダイムにも対応してきており、それがReact開発にも活用されている。  
+
+関数型プログラミング言語は、先行する式の評価を後続の式に適用し、それを繋げていった最終的な評価値に到る式のツリーを記述することでプログラムを組み立てていくもの。  
+そのため関数型プログラミング言語における式は、ほとんどの場合、値を演算するか関数を呼び出すか、またはそれの組み合わせでしか無い。
+
+つまり、React開発では文によって手続きを書き連ねるスタイルではなく、式を羅列したスタイルが好まれている。  
+そのためには演算子を利用した式の記法を理解しておくことが重要である。
+
+## ショートサーキット(Short-Circuit Evaluation)
+「短絡評価」とも呼ばれる。  
+
+論理演算子（`&&`, `||`, `!`など）が左から右に評価され、左辺の評価を行った場合に評価が確定した場合には右辺の評価を行わないことを利用する仕組み。
+
+これによって文ではなく、式によって条件分岐を行う事ができる。
+
+AND演算子は左辺がtruthyな値であれば、右項を返す。左辺がfalsyな値であれば左辺を返す。  
+このとき後者では、左辺がfalsyな場合は右辺を評価しない（短絡評価）  
+
+逆にOR演算子は左辺がfalsyであれば右辺を返す。左辺がtruthyな値であれば左辺を返す。
+この場合も後者は右辺を評価しない（短絡評価）  
+
+```js
+const hello = undefined || null || 0 || NaN || '' || 'Hello';
+console.log(hello);
+
+const chao = ' ' && 100 && [] && {} && 'Chao!';
+console.log(chao);
+
+
+true && console.log('1. ', hello);      // 1. Hello
+// falseがかえるので何も出力されない
+false && console.log('2, ', hello);     
+
+// trueがかえるので出力されない
+true || console.log('3. ', chao);
+false || console.log('4. ', chao);      // 4. Chao!
+```
+
+
+## Nullish CoalescingとOptional Chaining
+ヌリッシュコアレシングとオプショナルチェーン、ES2020に導入された比較的新しい短絡評価の文法。  
+TypeScriptでは2019年11月にリリースされた3.7系以降で使えるようになった。
+
+### Nullish Coalescingとは
+日本語でNull合体演算子で、`||`の短絡評価のかわりに`??`を利用することで、`null`と`undefined`に限定させたもの。
+
+`||`による短絡評価の場合は、以下のようにfalsyな値の場合に右辺がかえる。
+```js
+console.log('' || 'Hello');     // Hello
+console.log(0 || 'Hello');      // Hello
+console.log(NaN || 'Hello');      // Hello
+console.log(false || 'Hello');      // Hello
+console.log(null || 'Hello');      // Hello
+console.log(undefined || 'Hello');      // Hello
+```
+
+が`0`や`''`など、そぐわない場合が多いため、より厳格な評価をするためにES2020に導入されたものがNullish Coalescingである。  
+
+Nullish Coalescingの場合、使い方は短絡評価と同様であるが、左項が`null`もしくは`undefined`のときのみ右項がかえる。
+```js
+console.log('' ?? 'Hello');     // 
+console.log(0 ?? 'Hello');      // 0
+console.log(NaN ?? 'Hello');      // NaN
+console.log(false ?? 'Hello');      // false
+console.log(null ?? 'Hello');      // Hello
+console.log(undefined ?? 'Hello');      // Hello
+```
+
+### Optional Chaining
+Optional Chainingは、  
+n階層のオブジェクトにアクセスする際、各キーの末尾に`?`をつけることによって、存在しないプロパティの場合は短絡して結果を返す機能。
+
+通常オブジェクトにアクセスする場合は`.`もしくは`[]`を利用する。  
+このとき以下のように、指定したキーのプロパティが存在しない場合は、1階層目であれば`undefined`を返す。そのうえで`undefined`のプロパティにアクセスしようとすると例外となる。
+```js
+const obj = {}
+console.log(obj.foo)    // undefined
+console.log(obj.foo.bar)    // Uncaught TypeError: Cannot read properties of undefined (reading 'bar')
+```
+
+そのような場合に`?`を利用することで、途中のプロパティが存在しない場合は、そこで式が短絡されて`undefined`を返してくれる様になる。
+```js
+const = {}
+console.log(obj.foo?.bar?)  // undefined
+```
+
+またチェーンはプロパティだけではなく、`foo?.bar()?.baz()`のようにメソッドでも利用可能。
+
+例えばオブジェクトのプロパティを参照する場合も、存在しないキーを参照してしまうとundefienedになったり、nullが返ってきてしまったりするが、NullshCoalescingを利用するとその場合の値を記述したり、条件分岐がしやすくなったりする。  
+`||`よりも厳格に  
+
+```js
+const users = [
+    {
+        name: 'Ptty Rabbit',
+        address: {
+            town: 'Maple Town',
+        },
+    },
+    {
+        name: 'Rolley Cocker',
+        address: {}
+    },
+    null,
+]
+
+for (const u of users) {
+    const user = u ?? {name: '(Somebody)' };
+    const town = user?.address?.town ?? '(Somewhere)';
+    console.log(`${user.name} lives in ${town}`);
+}
+
+// "Ptty Rabbit lives in Maple Town"
+// "Rolley Cocker lives in (Somewhere)"
+// "(Somebody) lives in (Somewhere)"
+```

@@ -1018,3 +1018,17 @@ for (const u of users) {
 // "Rolley Cocker lives in (Somewhere)"
 // "(Somebody) lives in (Somewhere)"
 ```
+
+# JavaScriptにおけるthis
+JavaScriptにおけるthisはとても厄介。  
+
+というのも、Javaなどのプログラミング言語におけるthisはクラス内でインスタンスを扱うための存在であることに対し、  
+JavaScriptではありとあらゆるスコープでいきなり参照できるような文法で、実行コンテキストであるオブジェクトへの参照を表す。
+
+JavaScriptにおけるトップレベルの実行環境は必ず何らかのグローバルオブジェクトになっている。  
+処理系によって異なるが、`Node.js`の場合は`global`オブジェクト、ブラウザの場合は`Window`オブジェクト。  
+
+JavaScriptで`this`を利用するとこれらのオブジェクトを参照していることになる。
+
+Node.jsの場合
+```js

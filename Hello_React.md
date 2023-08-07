@@ -1020,15 +1020,367 @@ for (const u of users) {
 ```
 
 # JavaScriptにおけるthis
-JavaScriptにおけるthisはとても厄介。  
+JavaScriptにおける`this`は独特で、  
+原理を理解せずに使っていると、一見問題なさそうな以下のプログラムもエラーとなってしまう。
+```js
+class Person {
+    constructor(name) {
+        this.name = name;
+    }
 
-というのも、Javaなどのプログラミング言語におけるthisはクラス内でインスタンスを扱うための存在であることに対し、  
-JavaScriptではありとあらゆるスコープでいきなり参照できるような文法で、実行コンテキストであるオブジェクトへの参照を表す。
+    greet() {
+        function diIt() {
+            console.log(`Hi, I'm ${this.name}`)
+        }
+        doIt();
+    }
+}
 
+const kato = new Person('Jin');
+kato.greet();       // TypeError: Cannot read property 'name' of undefined
+```
+
+なので`this`の扱いを理解してゆく
+
+## 原因
+これの原因は`this`の扱い方が一般的なプログラミング言語と異なるからである。
+
+Javaなどのプログラミング言語におけるthisはクラス内でインスタンスを扱うための存在であることに対し、  
+JavaScriptでは**ありとあらゆるスコープでいきなり参照できるような文法で、実行コンテキストであるオブジェクトへの参照**を表す。
+
+そのためJavaなどの言語ではクラス内でのみ`this`を利用するが、
+JavaScriptでは、以下のようなプログラムでも`this`を使用する事ができる。  
+```js
+function test() {
+    console.log(this)
+}
+```
+
+このときの`this`にどのようなオブジェクトが入るかは、`test()`がどこで実行されるか、`.`が使われているかによって異なる。  
+
+大まかには以下の通り
+- 関数として呼び出される場合
+- メソッドとして呼び出される場合
+
+### 関数として呼び出される場合
 JavaScriptにおけるトップレベルの実行環境は必ず何らかのグローバルオブジェクトになっている。  
 処理系によって異なるが、`Node.js`の場合は`global`オブジェクト、ブラウザの場合は`Window`オブジェクト。  
 
-JavaScriptで`this`を利用するとこれらのオブジェクトを参照していることになる。
-
-Node.jsの場合
+そのためREPLで上記の`test()`を実行すると`global`オブジェクトを参照していることになるため、以下のような結果となる
 ```js
+> test()
+<ref *1> Object [global] {
+  global: [Circular *1],
+  queueMicrotask: [Function: queueMicrotask],
+  clearImmediate: [Function: clearImmediate],
+  setImmediate: [Function: setImmediate] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  structuredClone: [Function: structuredClone],
+  clearInterval: [Function: clearInterval],
+  clearTimeout: [Function: clearTimeout],
+  setInterval: [Function: setInterval],
+  setTimeout: [Function: setTimeout] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  atob: [Function: atob],
+  btoa: [Function: btoa],
+  performance: Performance {
+    nodeTiming: PerformanceNodeTiming {
+      name: 'node',
+      entryType: 'node',
+      startTime: 0,
+      duration: 866.9683639999712,
+      nodeStart: 26.50836499995785,
+      v8Start: 60.982105000002775,
+      bootstrapComplete: 148.5300489999936,
+      environment: 109.34810699999798,
+      loopStart: 190.5946479999693,
+      loopExit: -1,
+      idleTime: 616.155561
+    },
+    timeOrigin: 1691211071112.674
+  },
+  fetch: [AsyncFunction: fetch]
+}
+```
+
+一方で`test()`を別のオブジェクトに結びつけてみる
+```js
+function test() {
+    console.log(this)
+}
+
+const obj = {
+    test: test
+}
+```
+
+このときに`obj.test()`を呼び出すと、`.`が使われており実行コンテキストが`obj`となるので、結果は以下のようになる
+```js
+> obj.test()
+{ test: [Function: test] }
+```
+
+`obj`を`console.log`で出力しても分かる通り、`this` = `obj`になったことがわかる。
+```js
+> console.log(obj)
+{ test: [Function: test] }
+```
+
+逆に`test()`をオブジェクトを結びつけていても、`.`を使っていない場合は呼び出し元はグローバルなので、`this`は`global`を参照することになる  
+```js
+function test() {
+    console.log(this)
+}
+const obj = {
+    test: test
+}
+
+const glob = obj.test
+```
+
+```js
+> glob()
+<ref *1> Object [global] {
+  global: [Circular *1],
+  queueMicrotask: [Function: queueMicrotask],
+  clearImmediate: [Function: clearImmediate],
+  setImmediate: [Function: setImmediate] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  structuredClone: [Function: structuredClone],
+  clearInterval: [Function: clearInterval],
+  clearTimeout: [Function: clearTimeout],
+  setInterval: [Function: setInterval],
+  setTimeout: [Function: setTimeout] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  atob: [Function: atob],
+  btoa: [Function: btoa],
+  performance: Performance {
+    nodeTiming: PerformanceNodeTiming {
+      name: 'node',
+      entryType: 'node',
+      startTime: 0,
+      duration: 35503.88622000022,
+      nodeStart: 29.7027179999277,
+      v8Start: 52.53814599988982,
+      bootstrapComplete: 151.2990770000033,
+      environment: 105.78859200002626,
+      loopStart: 205.61696800030768,
+      loopExit: -1,
+      idleTime: 34908.522145
+    },
+    timeOrigin: 1691214232405.03
+  },
+  fetch: [AsyncFunction: fetch]
+}
+```
+
+## 任意のthisを設定する
+基本的に`this`は、`.`前のオブジェクトが`this`であると認識されるが、任意の`this`を設定する方法がある。  
+
+それには`Function`オブジェクトの`call()`および`bind()`というプロトタイプメソッドを利用する。
+
+### call()
+`call()`メソッドは、`.`前につけるオブジェクトを指定することができる。  
+
+以下の`test.call(obj)`は`obj.test()`と同義の結果となり、`test()`を`obj`のメソッドとして登録せずとも`this`を`obj`として認識できるようになる。
+```js
+function test() {
+    console.log(this)
+}
+
+const obj = {}
+```
+
+```js
+> test.call(obj)
+{}
+```
+
+### bind()
+`bind()`メソッドは、関数をもとに新しい関数を作成するためのメソッドで、  
+それとともに`this`になるべきオブジェクトを設定することができる。
+
+```js
+function test() {
+    console.log(this)
+}
+
+const obj = {}
+
+const bindedNewFunction = test.bind(obj)
+```
+
+```js
+> bindedNewFunction()
+{}
+```
+
+## thisは使用例4パターン
+
+1. メソッド呼び出し
+2. 関数呼び出し（非Strictモード）
+3. 関数呼び出し（Strictモード）
+4. コンストラクタ呼び出し
+
+### 1. メソッド呼び出し
+最初にも説明した、`.`の前のオブジェクトが`this`として渡されるパターン
+```js
+const foo = {
+    name: `foo`,
+    dump() {
+        console.log(this)
+    }
+}
+```
+
+```js
+> foo.dump();
+{ name: 'foo', dump: [Function: dump] }
+```
+
+### 2. ES3での関数呼び出し（非Strictモード）
+上でも紹介した、`.`を使用せず関数として呼び出すパターン。  
+
+メソッドではなく、関数として呼び出す場合にはグローバルとして呼び出されるので、実行コンテキストはグロ-バルオブジェクトとなる。
+
+```js
+function foo() {
+    console.log(this)
+}
+```
+
+```js
+> foo()
+<ref *1> Object [global] {
+  global: [Circular *1],
+  queueMicrotask: [Function: queueMicrotask],
+  clearImmediate: [Function: clearImmediate],
+  setImmediate: [Function: setImmediate] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  structuredClone: [Function: structuredClone],
+  clearInterval: [Function: clearInterval],
+  clearTimeout: [Function: clearTimeout],
+  setInterval: [Function: setInterval],
+  setTimeout: [Function: setTimeout] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  atob: [Function: atob],
+  btoa: [Function: btoa],
+  performance: Performance {
+    nodeTiming: PerformanceNodeTiming {
+      name: 'node',
+      entryType: 'node',
+      startTime: 0,
+      duration: 4531.06009699963,
+      nodeStart: 4.86290100030601,
+      v8Start: 18.518626000732183,
+      bootstrapComplete: 53.712284000590444,
+      environment: 31.98577400110662,
+      loopStart: 79.12375999987125,
+      loopExit: -1,
+      idleTime: 4388.420136
+    },
+    timeOrigin: 1691220023628.992
+  },
+  fetch: [AsyncFunction: fetch],
+  foo: [Function: foo]
+}
+```
+
+また分かりづらいがオブジェクト内での関数呼び出しも、実行コンテキストはグローバルとなる。
+```js
+var myObject = {
+  value: 1,
+  show: function() {
+    console.log(this);
+
+    function show() {
+      console.log(this); 
+    }
+    show();
+  }
+};
+myObject.show();
+```
+
+実行結果
+```js
+{ value: 1, show: [Function: show] }
+<ref *1> Object [global] {
+  global: [Circular *1],
+  queueMicrotask: [Function: queueMicrotask],
+  clearImmediate: [Function: clearImmediate],
+  setImmediate: [Function: setImmediate] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  structuredClone: [Function: structuredClone],
+  clearInterval: [Function: clearInterval],
+  clearTimeout: [Function: clearTimeout],
+  setInterval: [Function: setInterval],
+  setTimeout: [Function: setTimeout] {
+    [Symbol(nodejs.util.promisify.custom)]: [Getter]
+  },
+  atob: [Function: atob],
+  btoa: [Function: btoa],
+  performance: Performance {
+    nodeTiming: PerformanceNodeTiming {
+      name: 'node',
+      entryType: 'node',
+      startTime: 0,
+      duration: 274939.51298400015,
+      nodeStart: 4.698131000623107,
+      v8Start: 20.551317000761628,
+      bootstrapComplete: 54.09365000016987,
+      environment: 35.30920100025833,
+      loopStart: 83.06021999940276,
+      loopExit: -1,
+      idleTime: 274478.525961
+    },
+    timeOrigin: 1691220734062.003
+  },
+  fetch: [AsyncFunction: fetch],
+  myObject: { value: 1, show: [Function: show] }
+}
+```
+
+### 3. 関数呼び出し(Strictモード)
+2番目の関数呼び出しのようにES3では、メソッド内で関数呼び出しを行った場合の`this`はグローバルオブジェクトとなる。  
+
+これはコンストラクター関数を`new`を使用せずに呼び出してしまった場合に、`this`がグローバルオブジェクトとなり、意図せずグローバル変数を作成してしまう恐れがある。  
+以下のように
+```js
+function Dog(name) {
+    this.name = name
+}
+
+inu = Dog('hachi')
+
+// inuがnameというプロパティを持つはずが、グローバル変数としてnameが定義されている
+console.log(name)   // hachi
+```
+
+これはよろしくない動きということで、ES5から追加されたString（厳密）モード（古い仕様に含まれる安全ではない構文や機能を禁止するためのモード）では、関数内で呼び出された`this`は`undefined`が入るようになった。
+
+Strictモードはファイルの先頭行や関数の最初に`use strict`と記述することで有効になる。
+```js
+function Dog(name) {
+    'use strict';
+    this.name = name
+}
+```
+
+```js
+> inu = Dog('hachi')
+Uncaught TypeError: Cannot set properties of undefined (setting 'name')
+    at Dog (REPL4:3:15)
+>
+> console.log(name)
+Uncaught ReferenceError: name is not defined
+```
+
+クラス構文は更にそれ以降のES2015によって追加された構文のため、自動的にこのstrictモードが有効になっており、そのコンストラクタも`new`演算子を使用しないと実行できないようになっている。

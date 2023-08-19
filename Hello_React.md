@@ -1384,3 +1384,91 @@ Uncaught ReferenceError: name is not defined
 ```
 
 クラス構文は更にそれ以降のES2015によって追加された構文のため、自動的にこのstrictモードが有効になっており、そのコンストラクタも`new`演算子を使用しないと実行できないようになっている。
+
+
+#　モジュールシステム
+現代のプログラミング言語にはモジュールシステムが当然のようにあるが、JavaScriptの場合はそうではない。  
+
+というのもJaaScriptnには元々モジュールシステムが存在しなかった。  
+しかしモジュールシステムは確実に必要な機能で、サードパーティライブラリによって保管されたり、公式でサポートしたりといろんな歴史のなかで、複数の書き方が存在する。
+
+- ESM(ES Module)
+- CJS(CommonJS Module)
+
+ESMの場合は`import`を利用し、CJSの場合は`require`を利用する  
+やっかいなのはどちらもやりたいことは同じなのに、**サーバーサイド環境（Node.js）とブラウザ環境とで、どちらを利用するべきか天下統一されていない**こと。
+
+主には以下の通りに使い分ける（現在はNode環境でもESMを利用するように移行中）
+| サーバーサイド環境 | ブラウザ環境 | 
+|---|---|
+| CJS | ESM |
+
+## CJS(CommonJS Module)
+Node.jsの誕生とともに、策定されたサーバーサイド用のモジュールシステム。  
+
+### 書き方
+`require`によって別のモジュールを使用する。  
+
+モジュール側1 `moon.js`
+```js
+const moon = {
+    modifier: 'prism',
+    transform() {
+        console.log(`Moon ${this.modifier} power, make up!`);
+    },
+}
+
+module.exports = moon;
+```
+
+モジュール側2 `venus.js`
+```js
+exports.transform = function() {
+    console.log('Venus power, make up!')
+};
+
+const finish = function(){
+    console.log('Crescent beam!')
+}
+```
+
+呼び出し側
+```js
+const moon = require('./moon');
+moon.transform();       // Moon prism power, make up!
+
+const { transform, finish } = require('./venus.js');
+transform();        // Vunes power, make up!
+finish();           // Crescent baem!
+```
+
+
+## ESModule(ECMA Script Module)
+ES2015で追加された公式のモジュールシステム。
+
+公式によるものなので単に「JavaScriptモジュール」と呼ぶ場合もある。
+
+ウェブブラウザがサポートしており、Firefoxのみ2018年で遅めのサポートとなったが、現在のモダンブラウザは基本的に実装している。
+
+### 書き方
+`import`と`export`によって表現する。
+
+以下のように、`script`タグの`type`属性を`module`にすることでスクリプトがモジュールであることを宣言し、モジュールシステムを利用することができる。
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <body>
+        <ul id="list"></ul>
+        <script type="module">
+import uniq from 'https://dev.jspm.io/lodash-es/uniq.js';
+
+const arr = [12, 2, 2, 2, 9, 5, 12, 2, 15, 8, 9, 8];
+const elems = uniq(arr)
+    .map(n => `<li>${n}</li>`)
+    .join('');
+document.getElementById('list').innerHTML = elems;
+        </script>
+    </body>
+<html>
+```

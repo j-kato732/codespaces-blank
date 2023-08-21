@@ -1386,7 +1386,7 @@ Uncaught ReferenceError: name is not defined
 クラス構文は更にそれ以降のES2015によって追加された構文のため、自動的にこのstrictモードが有効になっており、そのコンストラクタも`new`演算子を使用しないと実行できないようになっている。
 
 
-#　モジュールシステム
+# モジュールシステム
 現代のプログラミング言語にはモジュールシステムが当然のようにあるが、JavaScriptの場合はそうではない。  
 
 というのもJaaScriptnには元々モジュールシステムが存在しなかった。  
@@ -1398,13 +1398,15 @@ Uncaught ReferenceError: name is not defined
 ESMの場合は`import`を利用し、CJSの場合は`require`を利用する  
 やっかいなのはどちらもやりたいことは同じなのに、**サーバーサイド環境（Node.js）とブラウザ環境とで、どちらを利用するべきか天下統一されていない**こと。
 
-主には以下の通りに使い分ける（現在はNode環境でもESMを利用するように移行中）
-| サーバーサイド環境 | ブラウザ環境 | 
-|---|---|
-| CJS | ESM |
+主には以下の通りに使い分ける（現在はサーバーサイド環境でもESMを利用するように移行中）
+| サーバーサイド環境 | ブラウザ環境 |
+| ------------------ | ------------ |
+| CJS                | ESM          |
 
 ## CJS(CommonJS Module)
 Node.jsの誕生とともに、策定されたサーバーサイド用のモジュールシステム。  
+
+同期的にモジュールをロードするため、サーバーサイドを実行環境とする場合はこちらを採用する場合が多い。
 
 ### 書き方
 `require`によって別のモジュールを使用する。  
@@ -1444,13 +1446,16 @@ finish();           // Crescent baem!
 
 
 ## ESModule(ECMA Script Module)
-ES2015で追加された公式のモジュールシステム。
-
+ES2015で追加された公式のモジュールシステム。  
 公式によるものなので単に「JavaScriptモジュール」と呼ぶ場合もある。
+
+ESModuleでのモジュールのロードは非同期で行われ、モジュール内も自動的にストリクトモードが適応される。
 
 ウェブブラウザがサポートしており、Firefoxのみ2018年で遅めのサポートとなったが、現在のモダンブラウザは基本的に実装している。
 
-### 書き方
+Node v8.0からNode環境でもESModuleを基本的に使うことができるようになり、ESModuleが用いられることが多くなったが、古いライブラリではESModuleに対応していない場合があるので注意が必要。
+
+### ブラウザでの書き方
 `import`と`export`によって表現する。
 
 以下のように、`script`タグの`type`属性を`module`にすることでスクリプトがモジュールであることを宣言し、モジュールシステムを利用することができる。
@@ -1472,3 +1477,137 @@ document.getElementById('list').innerHTML = elems;
     </body>
 <html>
 ```
+
+### Node環境での書き方
+Node環境では基本的にCommonJSが用いられることが想定されているため、`.js`もしくは`.cjs`拡張子のファイルはCommonJSであると認識される。  
+そのためNode環境でESModuleを利用する場合は`.mjs`拡張子のファイルを作成することでESModuleで扱われる。  
+
+最近ではNode環境でもESModuleを利用する場合が増えて来たため、`package.json`に以下を追加することで、`.js`拡張子のファイルでもESModuleとして利用することができる。
+```json
+"type": "module"
+```
+このオプションにより、ディレクトリ配下に置かれた`.js`もしくは`.mjs`のJavaScriptファイルがESModuleとしてロードされるようになる。
+
+
+### export/importのやり方
+`export`は、外部のモジュールから変数や関数、クラスなどを使えるようにするためのもの。
+
+やり方は2つ
+- 名前付きエクスポート
+- デフォルトエクスポート
+
+#### 名前付きエクスポート
+名前付きエクスポートは、変数・関数・クラスの定義の前につけることもできるし、一度宣言したものをエクスポートすることができる。  
+
+後者の場合は`{}`が必要。
+```js:module_sample.js
+const ONE = 1;
+const TWO = 2;
+
+export { ONE, TWO };
+export const TEN = 10;
+```
+
+名前付きエクスポートしたものは、import側で`{}`を使って識別子を指定する。
+```js
+import {ONE, TWO, TEN} from './module_sample.js';
+```
+
+import時に`as`を利用して異なる名前でインポートすることも可能。  
+```js
+import {ONE as foo, TWO as bar, TEN} from './module_sample.js';
+
+console.log(foo, bar, TEN);    // 1 2 10
+```
+
+`as`はexport側でも利用可能。
+```js
+
+const ONE = 1;
+const TWO = 2;
+
+export { ONE as foo, TWO as bar};
+export const TEN = 10;
+```
+
+import側
+```js
+import {foo, bar} from './module_sample.js';
+```
+
+#### デフォルトエクスポート
+デフォルトエクスポートは名前付きエクスポートとは異なり、1モジュールに一つしかエクスポートできない特殊記法。
+
+デフォルトエクスポートには`export default`を利用するが、モジュールごとに一つしか存在できない。
+
+```js
+// user.js
+export default class User {
+  constructor(name) {
+    this.name = name
+  }
+}
+```
+
+デフォルトエクスポートのインポートには波括弧を利用しない。またインポートする対象に名前をつけてあげる必要がある。
+```js
+import Foo from './user.js';
+
+new Foo('taro');
+```
+
+デフォルトエクスポートはインポート側で名前をつける必要があるため、エクスポート側では名前を持たない場合がある。
+```js
+export default class {
+  constructor(name) {
+    this.name = name
+  }
+}
+```
+
+```js
+export default function() {
+  console.log("Hello");
+}
+```
+
+```js
+export default ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+```
+
+#### モジュールの集約
+複数のモジュールをエクスポートする場合に、一つのファイルに集約してエクスポートすることも可能で、一つのエントリポイントに集約することができる。
+```js
+// module1.js
+export const foo = "hello";
+
+export const baz = "hogehoge";
+```
+
+```js
+//module2.js
+const bar = () => {
+  console.log("hogehoge")
+}
+
+export {bar};
+```
+
+```js
+// module3.js
+export default class {
+  constructor(name) {
+    this.name = name
+  }
+}
+```
+
+集約してエクスポートする
+```js
+// index.js
+export * from './module1.js';
+export { bar } from './module2.js';
+export { default as User } from './module3.js';
+```
+
+モジュールの集約は循環依存（moduleAがmoduleBに依存しかつ、moduleBがmoduleAに依存しているような状態）を回避することも可能。

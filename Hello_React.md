@@ -1817,3 +1817,107 @@ const sumWithInitial = arr.reduce((n, m) => {
 - 第一引数を第2引数より前に並べる場合は、0未満の数値を返す。
 - 第一引数を第二引数よりあとに並べる場合は、0より大きい数値を返す。
 - 第一引数と第二引数が同一の場合は、0を返す。
+
+このルールさえ満たす関数を作れば良いので、数値の大小を並び替えるだけでなく、より複雑なソートも可能。
+
+注意が必要なのは`sort`は破壊的メソッドであること  
+破壊的メソッドとは、オブジェクトを新たに生成するのではなく対象となるオブジェクトを変更するメソッドのこと。
+```js
+const arr = [4,6,1,2]
+
+arr.sort((n, m) => n > m ? 1 : -1);
+console.log(arr)      // [1, 2, 4, 6]
+```
+JavaScriptでは、JavaやPythonと同様に破壊的メソッドを丸暗記するしか無いので注意。  
+
+破壊的メソッドとして他にも
+- pop()
+- unshift()
+- pop()
+- shift()
+- reverse()
+
+などがある。
+
+## 破壊的メソッドを破壊せずに使用するためのTips
+```js
+const list = [4, 8, 2, 6];
+
+const sortedList = list.slice().sort((n, m) => n < m ? -1 : 1);
+console.log(sortedList);
+
+const reverselist = [...list].reverse();
+console.log(reverseList, list);
+```
+
+また`push()`や`unshift()`を使用するかわりに`[0, ...list, 99]`のように記述することもできる。
+
+### includes
+「指定した値の要素が一つでも含まれているか」を真偽値で返す事ができる。これは条件式の活用できるので便利。
+```js
+const arr = [1,2,3,4,5]
+
+console.log(arr.includes(5));   // true
+console.log(arr.includes(8));   // false
+```
+
+
+### 繰り返し処理
+JavaScriptで任意の回数だけ繰り返し処理を記述する方法。  
+
+Arrayオブジェクトの`key()`メソッドを利用することで、イテレータという反復処理のオブジェクトを取得することができる。
+これを配列に展開することで要素のインデックスが取り出すことができるので、`range`っぽい動きを実現できる。
+```js
+> [...Array(3)]
+[ undefined, undefined, undefined ]
+> [...Array(3)].map((_, n) => { console.log(`${n + 1} times`); }); 
+1 times
+2 times
+3 times
+> [...Array(3).keys()] [0,1,2]
+> [...Array(3).keys()].map((n) => { console.log(`${n + 1} times`); }); 
+1 times
+2 times
+3 times
+```
+
+## オブジェクトの反復処理
+オブジェクトの反復処理のための構文として、`for...in`が使われている事が多いが、これはミュータブル変数が使用されることからあまり推奨されていない。
+
+```js
+const user = {
+  id: 3,
+  name: "kato jin",
+  greet: () => console.log("hello"),
+}
+
+for (let key in user) {
+  console.log(key, user[key]);
+}
+// "id", 3
+// "name", "kato jin"
+// "greet", () => console.log("hello")
+```
+
+そのためオブジェクトの反復処理には`Object`自身が持つメソッドを利用し、一端配列を形成するスタイルがAirbnbのガイドでは推奨されている。
+
+具体的には、オブジェクトのキー配列を取得する場合は`Object.keys()`, オブジェクトのキーバリュー配列を取得する場合は`Object.entries()`を利用する。これらはES2017で追加された新しめのメソッド。
+
+```js
+const user = {
+  id: 3,
+  name: "kato jin",
+  greet: () => console.log("hello"),
+}
+
+console.log(Object.keys(user));
+// ["id", "name", "greet"]
+
+console.log(Object.entries(user));
+// [["id", 3], ["name", "kato jin"], ["greet", () => console.log("hello")]]
+
+// 反復処理
+Object.keys(user).map((k) => {console.log(k, user[k]);});
+
+Object.entries(user).map(([k, v]) => {console.log(k, v); });
+```

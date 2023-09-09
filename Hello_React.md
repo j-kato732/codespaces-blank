@@ -1921,3 +1921,170 @@ Object.keys(user).map((k) => {console.log(k, user[k]);});
 
 Object.entries(user).map(([k, v]) => {console.log(k, v); });
 ```
+
+# 関数型プログラミングの要素
+関数型プログラミングを理解するにあたって重要なプログラムが以下のようなもの。  
+`map`に何を渡しているのか？
+```js
+const double = (n) => n * 2;
+[1, 2, 3].map(double);
+```
+
+ここでは、`map`メソッドの引数として`double`という関数を渡している。  
+関数に対して別の関数を渡すということは他のプログラミング言語ではあまり行われていない。  
+これはJavaScriptが第一級関数（関数を変数に入れられること）をサポートしているから。  
+
+引数を無名関数にて指定する場合も同様に関数を関数を渡している。  
+```js
+[1, 2, 3].map((n) => n * 2);
+```
+
+
+関数型プログラミングの定義は一言で定められるようなものではないが、関数型プログラミングのパラダイムでは、主に以下のことが行われる。
+- 名前を持たないその場限りの関数（無名関数）を定義できる
+- 変数やデータ構造の値として関数を設定できる（第一級関数をサポート）
+- 関数に引数として関数を渡したり、その戻り値に関数を設定できる（高階関数）
+- 関数に特定の引数を固定した新しい関数を作ることができる（部分適用）
+- 複数の高階関数を合成してひとつの関数にできる（関数合成）
+
+## 高階関数
+高階関数とは（Higher Order Function）とは、引数に関数をとったり、戻り値として関数を返したりする関数のこと  
+
+さっきのコードや以下のサンプルのように、関数を引数として受け取ったり、関数を戻り値として返すことができる。  
+```js
+const greeter = (target) => {
+  const sayHello = () => {
+    console.log(`Hi ${target}!`);
+  };
+
+  return sayHello;
+}
+
+const greet = greeter('Jin Kato');
+greet();    // Hi Jin Kato!
+```
+
+ここでは`sayHello`関数を戻り値として返す`greeter`関数を定義しており、呼び出し側は`greeter`関数の戻り値を`greet`に格納している。  
+`greet`には`sayHello`関数が格納されるので、`greet`を関数として呼び出すことができるようになる。
+
+`return sayHello()`としてしまうと`sayHello()`が関数の呼び出しとなり、結果の`undefined`が返ることになるので注意が必要。  
+
+### より良い書き方
+関数型プログラミングでは不要な代入はできるだけ避けるようにするべきなので、代入をできるだけ省略すると以下のようなコードになる
+```js
+const greeter = (target) => {
+  return () => {
+    console.log(`Hi ${target}!`);
+  };
+}
+```
+
+さらにアロー関数の処理内容が`return`文のみの場合は、`{}`を省略することができるので最終的にはこうなる。
+```js
+const greeter = (target) => console.log(`Hi ${target}!`);
+```
+
+### Reactにも活用される
+高階関数の応用として、Reactでも高階関数がよく使用される。  
+例えばコンポーネントを引数にとって、コンポーネントを戻り値として返す「高階コンポーネント（HOC: Higher Order Component）」という概念。  
+
+しかし原理は高階関数と同様なので、しっかり理解しておくことが重要。
+
+## カリー（curry）化と部分適用
+
+カリー化とは、~~あまり食材`うどん`に`カレー`を入れて`カレーうどん`に変化させ、食べ盛りのお子さんもうれしい主婦の味方アレンジレシピのことである~~
+
+これは冗談で料理のカレーとは関係なく、Haskellという激むず関数型言語を開発したHaskell Curryという学者さんの名前を指す。
+しかし「元の何かを異なる何かに変化させる」という観点では似たようなもので、今回は食材ではなく関数を変化させる。  
+
+カリー化とは、「複数の引数をとる関数を、より少ない引数をとる関数に分割して入れ子にすること」である。
+```js
+// カリー化前
+{
+  const multiply = (n, m) => n * m;
+  console.log(multiply(2, 4));        // 8
+}
+
+// カリー化
+{
+  const withMultiple = (n) => {
+    return (m) => n * m;
+  };
+  console.log(withMultiple(2)(4));    // 8
+}
+
+// カリー化（アロー関数式版）
+{
+  const withMultiple = (n) => (m) => n * m;
+  console.log(withMultiple(2)(4));    // 8
+```
+
+`multiply`関数は引数`n`と`m`を取り、その積を返すだけの関数だが、カリー化をした`withMultiply`関数は「`m`を引数にとり`n`との積を返す関数」を返す関数となる。  
+
+### 部分適用
+関数をカリー化することによって、部分適用が可能となる。
+```js
+const withMultiple = (n) => (m) => n * m;
+console.log(withMultiple(3)(5));
+
+const triple = withMultiple(3);
+console.log(triple(5));
+```
+
+ここでは`withMultiple`に`3`を渡してできた関数を`triple`に格納することで、引数を3倍する関数を作成することができる。このような形でカリー化した関数の一部の引数を固定して新しい関数を作ることを「関数の部分適用」という。
+
+## クロージャ
+クロージャ（Closure)とは、日本語では関数閉包と呼ばれ、関数を関数で閉じて包むことをいう。  
+
+閉じていない状態のプログラムの例。
+
+```js
+let COUNT = 0;
+
+const increment = () => {
+  return COUNT += 1;
+};
+```
+
+単純なカウンターだが、グローバル変数`COUNT`に依存しているのがあまりよろしくない。  
+なのでこれを丸ごと関数の中に入れてしまう。
+```js
+const counter = () => {
+  let count = 0;
+
+  const increment = () => {
+    return count += 1;
+  };
+};
+```
+
+これだとカウンターを起動できないので、カウンターを外から使えるようにする。  
+これで`count`は関数外からアクセスできないプライベート変数であり、かつメソッドにて`count`のインクリメントが行えるようになる。
+```js
+const counter = () => {
+  let count = 0;
+
+  const countUp = () => {
+    return count += 1;
+  };
+
+  return countUp;
+};
+
+const increment = counter();
+console.log(increment());     // 1
+console.log(increment());     // 2
+```
+
+実用性から最終的にはこのようなコードになる。
+```js
+const counter = (count = 0) => (adds = 1) => count += adds;
+
+const increment = counter();
+console.log(increment());     // 1
+console.log(increment());     // 2
+console.log(increment(2));    // 4
+```
+
+やっていることは実質クラスと同じだが、クラスより簡潔に扱える。  
+実質状態を持つことになるが、関数型プログラミングでも状態を持つことをゼロにするのは難しいので、その場合に使用する。

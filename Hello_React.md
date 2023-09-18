@@ -2088,3 +2088,245 @@ console.log(increment(2));    // 4
 
 やっていることは実質クラスと同じだが、クラスより簡潔に扱える。  
 実質状態を持つことになるが、関数型プログラミングでも状態を持つことをゼロにするのは難しいので、その場合に使用する。
+
+# 非同期処理と例外処理
+現在のJSでは非同期処理への理解が不可欠である。  
+というのもJSはブラウザのための言語であり、ブラウザはボタンクリックや画面遷移などイベント駆動の処理が非同期処理と相性が良いことや、非同期処理を前提とするAjaxなどの登場によることから非同期処理が多く用いられる。
+
+理解のために重要なのは以下の通り
+- Promise
+- async/await
+
+## 非同期処理の難しいところ
+非同期処理の難しいところは、**非同期処理は処理が完了していなくても、次の処理を実行する**ので順序を担保する必要がある点。  
+
+プログラミング言語は基本的に上から順に実行されていきます。  
+この通り。
+```js
+console.log(1);
+console.log(2);
+console.log(3);
+```
+
+実行結果
+```
+1
+2
+3
+```
+
+上記のような同期処理では、処理が次の処理は実行されないので`1,2,3`と順に実行されるのですが、  
+以下のようにもし非同期処理が入った場合は、非同期処理を実行してその処理完了を待たずに次の処理を実行してしまうので結果が異なります。  
+```js
+console.log(1);
+// 1s後に2を出力する非同期処理
+setTimeout(()=>console.log(2), 1000);
+console.log(3);
+```
+
+実行結果
+```
+1
+3
+2
+```
+
+もし`console.log(3);`の実行を`setTimeout(()=>console.log(2), 1000);`の結果のあとに実行したい場合にはどのようにすれば良いのか？
+
+## ゴリ押しコールバック
+JSでは非同期処理が重要であるにも関わらず`Promise`が導入されるまでは、この非同期処理の順番を担保するための方法が用意されていなかった。  
+
+そのため苦肉の策として非同期処理を行う関数にコールバック(関数の引数にわたす関数のこと）を渡し、メインの処理が終わったら次にコールバックを実行するような設計をすることで順番を担保していた。  
+これの代表例の一つが、ファイルを開く`fs`モジュールの`readfile`関数。  
+
+複数のファイル(file1.txt, file2.txt, file3.txt, file4.txt, file5.txt)の読み込みが完了したあとに、そのデータに対して処理を行う場合はこのようなプログラムになる。
+```js
+const fs = require('fs');
+
+fs.readFile('file1.txt', (err, file1) => {
+    if (err) throw err;
+    fs.readFile('file2.txt', (err, file2) => {
+        if (err) throw err;
+        fs.readFile('file3.txt', (err, file3) => {
+            if (err) throw err;
+            fs.readFile('file4.txt', (err, file4) => {
+                if (err) throw err;
+                fs.readFile('file5.txt', (err, file5) => {
+                    if (err) throw err;
+                    console.log(file1 + file2 + file3 + file4 + file5);
+                });
+            });
+        });
+    });
+});
+```
+
+これであれば`file1.txt` -> `file2.txt` -> `fil3.txt`... と全てのファイルを順に開いたあとに`console.log`を行うことができるのだが、まあネストし過ぎで可読性・保守性最悪。  
+この状態はコールバック地獄（Callback Hell）と呼ばれた。  
+
+昔ばなし終了
+
+## Promise
+この非同期処理の順序問題を解決するために生まれた`Promise`。  
+`Promise`はES2015から導入されたJavaScirptの標準組み込みオブジェクトで、非同期処理の最終的な処理結果の値を「約束」するもの。  
+
+この`Promise`を使うことによって、順序を結果を担保する。  
+具体的には、実行したい非同期処理を`Promise`オブジェクトのインスタンス化する際のコールバックとする。   
+```js
+const asyncPromise = () => {
+  return new Promise((resolve, reject) => {
+    // 非同期処理を書く
+    // 非同期処理が成功した場合はresolve
+    // 失敗した場合はrejectを呼ぶ
+  })
+}
+```
+
+はじめの1,2,3を正しく表示するとする場合は
+```js
+const asyncSetTimeout = (waitTime) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      console.log(2);
+      // 非同期処理が終わったことを伝える
+      resolve();
+    }, waitTime)
+  })
+}
+
+console.log(1);
+
+// 1s後に2を出力する非同期処理
+asyncSetTimeout(1000)
+.then(() => {
+  console.log(3);
+})
+```
+
+実行結果
+```
+1
+2
+3
+```
+
+重要なのは以下の4つ
+- Promiseのインスタンス化時のコールバック内で非同期処理を記述する
+- コールバックの引数として`resolve`と`reject`を受け取る（上記ではrejectを省略）
+- 非同期処理が正しく終わった場合は、`resolve(結果)`、正しく終わらなかった場合は`reject(結果もしくはエラー)`を利用することで非同期処理の結果を伝える
+- `Promise.then()`は必ず`resolve`もしくは`reject`が実行されたあとに処理される（順番を担保できる）
+
+今回の例では非同期で実行される`setTimeout`関数をPromiseでラップしている。  
+`setTimeout`内の`console.log(2)`が終了したら`resolve`を実行することで非同期処理が終わったことを伝える。その後`.then()`処理内で`console.log(3)`を実行することで正しく`1,2,3`と順番に出力されている。
+
+
+ファイルを開くケースも`Promise`を使ってみる
+```js
+const fs = require('fs')
+
+const asyncReadFile = (file) => {
+  return new Promise((resolve, reject) => {
+    fs.readFile(file, (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  })
+}
+
+asyncReadFile('file1.txt')
+  .then(file1 => {
+      return readFilePromise('file2.txt').then(file2 => file1 + file2);
+  })
+  .then(result => {
+      return readFilePromise('file3.txt').then(file3 => result + file3);
+  })
+  .then(result => {
+      return readFilePromise('file4.txt').then(file4 => result + file4);
+  })
+  .then(result => {
+      return readFilePromise('file5.txt').then(file5 => result + file5);
+  })
+  .then(finalResult => {
+      console.log(finalResult);
+  })
+  .catch(err => {
+      throw err;
+  });
+```
+
+ここでのポイントは2つ
+- `resolve()`で渡した引数は`.then()`のコールバック関数の第一引数に渡される。`reject()`は`.catch`に渡される
+- `.then()`, `.catch()`はすべて戻り値としてPromiseオブジェクトを返す
+
+今回も先程同様、`fs.readFile()`をPromiseオブジェクトを返すようにラップしている。  
+`fs.readFile()`のコールバック関数で`err`があるときは`reject(err)`、`err`がない場合は取得したファイル内容`data`を`resolve(data)`とすることで`.then()`に結果を渡している。  
+また`.then()`の戻り値はすべて自動的にPromiseオブジェクトとして返されるので、「ファイル取得 -> 結果を連結」の結果を次の`.then()`に渡すことで、最終的にすべてのファイルを連結し出力している。  
+
+
+これによって非同期処理が複数ある場合でもかなり読みやすくなった事がわかる。
+
+PromiseなしVer
+```js
+const fs = require('fs');
+
+fs.readFile('file1.txt', (err, file1) => {
+    if (err) throw err;
+    fs.readFile('file2.txt', (err, file2) => {
+        if (err) throw err;
+        fs.readFile('file3.txt', (err, file3) => {
+            if (err) throw err;
+            fs.readFile('file4.txt', (err, file4) => {
+                if (err) throw err;
+                fs.readFile('file5.txt', (err, file5) => {
+                    if (err) throw err;
+                    console.log(file1 + file2 + file3 + file4 + file5);
+                });
+            });
+        });
+    });
+});
+
+PromiseありVer
+```js
+const fs = require('fs')
+
+const asyncReadFile = (file) => {
+  return new Promise((resolve, reject) => {
+    fs.readFile(file, (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  })
+}
+
+asyncReadFile('file1.txt')
+  .then(file1 => {
+      return readFilePromise('file2.txt').then(file2 => file1 + file2);
+  })
+  .then(result => {
+      return readFilePromise('file3.txt').then(file3 => result + file3);
+  })
+  .then(result => {
+      return readFilePromise('file4.txt').then(file4 => result + file4);
+  })
+  .then(result => {
+      return readFilePromise('file5.txt').then(file5 => result + file5);
+  })
+  .then(finalResult => {
+      console.log(finalResult);
+  })
+  .catch(err => {
+      throw err;
+  });
+```
+
+### Promiseの課題
+しかし、Promiseにもいくつか課題があって
+- 処理が少し異なっただけでPromiseを返す関数を記述する必要がある
+- Promiseの`.then()`をまたぐ前提で関数を作る必要がある
+などなどが
+
+そんな折、ES2017で誕生したのが`async/await`。これらを使うことによってより簡潔に非同期処理を記述することができる！
+
+## async/await
+読み方はアシンクではなく、エイシンク・アウェイとらしい。   
